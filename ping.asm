@@ -9,32 +9,61 @@
 .globl main
 
 main:
-	la $s0, origins
-	move $a0, $s0
-	jal startBoard
+	la	$s0, origins
+	move	$a0, $s0
+	jal	startBoard
 	
-	la $s1, origins
-	lw $t9, 0($s1)
+	la	$a1, display
+	li 	$s3, 0x00000000
+
+	mover:
+	li 	$v0, 12
+	syscall
+	move 	$t3, $v0
+	li 	$t1, 'w'
+	li 	$t2, 's'
+	li 	$t4, 'q'
+	beq	$t3, $t1, moveUp
+	beq	$t3, $t2, moveDown
+	beq	$t3, $t4, quit
 	
-	li $s2, 0x000000FF
-	sw $s2, 0($t9)
+
+moveUp:
 	
-	lw $t9, 4($s1)
-	sw $s2, 0($t9)
+	#move 	$a0, $s0 #recebe a origem da raquete
+	move 	$a2, $s3 #recebe a cor preta
 	
-	lw $t9, 8($s1)
-	sw $s2, 0($t9)
+	jal	uploadPaddlePosition
 	
-	li   $v0, 10      # Exit syscall
+	lw $t9, 0($a0)
+	addi	$t9, $t9, -1024
+	sw $t9, 0($a0)
+	li	$a2, 0x00ffffff
+	
+	jal	uploadPaddlePosition
+	
+	j	exitMoving
+
+moveDown:
+	move 	$a2, $s3 #recebe a cor preta
+	
+	jal	uploadPaddlePosition
+	
+	lw $t9, 0($a0)
+	addi	$t9, $t9, 1024
+	sw $t9, 0($a0)
+	li	$a2, 0x00ffffff
+	
+	jal	uploadPaddlePosition
+	
+	j	exitMoving
+
+quit:
+	li	$v0, 10
     	syscall
-
-
-
-
-
-
-
-
+    	
+exitMoving:
+j mover
 
 startBoard:
 
@@ -96,3 +125,15 @@ startBoard:
  	
 	jr $ra
 	
+
+uploadPaddlePosition:#recebe a origem e a cor
+
+li $t3, 16
+lw $t9, 0($a0)
+loop:
+	sw $a2, 0($t9)
+	addi $t9, $t9 ,512
+	addi $t3, $t3, -1
+	bnez $t3, loop
+	
+jr $ra
