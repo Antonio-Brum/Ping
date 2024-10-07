@@ -1,4 +1,4 @@
-.data
+	.data
 	display: .space 0x8000 #espaço do display 32768 "pixels"
 	lines: .word 0, 512, 1024, 1536, 2048, 2560, 3072, 3584, 4096, 4608, 5120, 5632, 6144, 6656, 7168, 7680,
                    8192, 8704, 9216, 9728, 10240, 10752, 11264, 11776, 12288, 12800, 13312, 13824, 14336, 14848, 15360, 15872,
@@ -9,50 +9,70 @@
 .globl main
 
 main:
-	la	$s0, origins
-	move	$a0, $s0
+	la	$s0, origins #s0 recebe o vetor 'origins'
+	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
 	jal	startBoard
 	
-	la	$a1, display
-	li 	$s3, 0x00000000
-
+	li 	$s1, 0x00000000 #cor preta
+	li 	$s2, 0x00d3d3d3 #cor cinza
+	
+	
 	mover:
-	li 	$v0, 12
-	syscall
-	move 	$t3, $v0
-	li 	$t1, 'w'
-	li 	$t2, 's'
-	li 	$t4, 'q'
-	beq	$t3, $t1, moveUp
-	beq	$t3, $t2, moveDown
-	beq	$t3, $t4, quit
+	move $a0, $s0
+	#jal moveBall
+	#li 	$v0, 12 #input de caractere
+	#syscall
+	lw $t9, 0xFFFF0004
+	#move 	$s3, $v0 #passa o caractere para $s3
+	#li 	$s4, 'w'
+	#li 	$s5, 's'
+	#li 	$s6, 'q'
+	beq	$t9, 0x00000077, moveUp
+	beq	$t9, 0x00000073, moveDown
+	beq	$t9, 0x00000071, quit
 	
-
+	li 	$a0, 250	#
+	li 	$v0, 32	# pause for 250 milisec
+	syscall	
+	
+	j mover
 moveUp:
-	
-	#move 	$a0, $s0 #recebe a origem da raquete
-	move 	$a2, $s3 #recebe a cor preta
+	sw 	$zero, 0xFFFF0004
+	move	$a0, $s0
+	move 	$a1, $s1 #recebe a cor preta
 	
 	jal	uploadPaddlePosition
 	
-	lw $t9, 0($a0)
-	addi	$t9, $t9, -1024
-	sw $t9, 0($a0)
-	li	$a2, 0x00ffffff
+	lw 	$s7, 0($s0) 
+	nop
+	nop
+	nop
+	addi	$s7, $s7, -1024
+	sw 	$s7, 0($s0)
+	
+	move	$a0, $s0
+	move	$a1, $s2
 	
 	jal	uploadPaddlePosition
 	
 	j	exitMoving
 
 moveDown:
-	move 	$a2, $s3 #recebe a cor preta
+	sw 	$zero, 0xFFFF0004
+	move	$a0, $s0
+	move 	$a1, $s1 #recebe a cor preta
 	
 	jal	uploadPaddlePosition
 	
-	lw $t9, 0($a0)
-	addi	$t9, $t9, 1024
-	sw $t9, 0($a0)
-	li	$a2, 0x00ffffff
+	lw $s7, 0($s0)
+	nop
+	nop
+	nop
+	addi	$s7, $s7, 1024
+	sw $s7, 0($s0)
+	
+	move	$a0, $s0
+	move 	$a1, $s2
 	
 	jal	uploadPaddlePosition
 	
@@ -65,6 +85,14 @@ quit:
 exitMoving:
 j mover
 
+
+##=============
+# startBoard
+#
+#	gera as posições iniciais dos elementos do jogo e
+#	passa, por referência, os endereços dos pixels de 
+#	origem destes elementos para o vetor 'origins'
+##=============
 startBoard:
 
 	la $t0, display #posição
@@ -75,6 +103,9 @@ startBoard:
 	sll $t4 ,$t4, 2 #multiplica pelo tamanho de cada palavra
 	add $t4, $t4, $t1 #$t4 contém o endereço do elemento 24 do array
 	lw $t5, 0($t4) #t5 recebe o valor que representa a linha 24
+	nop
+	nop
+	nop
 	add $t5, $t5, $t0 #t5 contém o endereço da linha
 	move $t6, $t5
 	
@@ -104,6 +135,9 @@ startBoard:
  	sll $t4, $t4, 2
  	add $t4, $t4, $t1
  	lw $t5, 0($t4)
+ 	nop
+	nop
+	nop
  	#calculando a posição no display
  	add $t5, $t5, $t0
  	move $t6, $t5
@@ -125,15 +159,50 @@ startBoard:
  	
 	jr $ra
 	
-
+##=============
+# uploadPaddlePosition
+#
+#	recebe o endereço da origem da raquete do player e
+#	a cor que ela será pintada
+##=============
 uploadPaddlePosition:#recebe a origem e a cor
 
-li $t3, 16
-lw $t9, 0($a0)
+li $t0, 16
+lw $t1, 0($a0)
+nop
+	nop
+	nop
 loop:
-	sw $a2, 0($t9)
-	addi $t9, $t9 ,512
-	addi $t3, $t3, -1
-	bnez $t3, loop
+	sw $a1, 0($t1)
+	addi $t1, $t1 ,512
+	addi $t0, $t0, -1
+	bnez $t0, loop
 	
-jr $ra
+jr 	$ra
+
+
+moveBall:
+	lw 	$t0, 8($a0)
+	nop
+	nop
+	nop
+	addi 	$t0, $t0, 1000
+	sw 	$t0, 8($a0)
+	
+	li 	$t1, 2
+	
+	li 	$t3, 0x00d3d3d3
+	
+ 	line1:
+ 		li 	$t2, 2
+ 		column1:
+ 			sw 	$t3, 0($t0)
+ 			addi 	$t0, $t0, 4
+ 			addi 	$t2, $t2, -1
+ 			bnez 	$t2, column1
+ 	
+ 		addi 	$t0, $t0, 504
+ 		addi 	$t1, $t1, -1
+ 		bnez 	$t1, line1
+ 	
+jr 	$ra
