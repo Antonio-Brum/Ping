@@ -5,6 +5,11 @@
                    16384, 16896, 17408, 17920, 18432, 18944, 19456, 19968, 20480, 20992, 21504, 22016, 22528, 23040, 23552, 24064,
                    24576, 25088, 25600, 26112, 26624, 27136, 27648, 28160, 28672, 29184, 29696, 30208, 30720, 31232, 31744, 32256, 32768
 	origins: .space 12
+	dirUp:		-1012	
+	dirDown:	1036
+	esqUp:		-1036
+	esqDown:	1012
+	ball_status:	0
 .text
 .globl main
 
@@ -16,17 +21,26 @@ main:
 	li 	$s1, 0x00000000 #cor preta
 	li 	$s2, 0x00d3d3d3 #cor cinza
 	
+	start:
+		wait:
+		li	$s4, 0xFFFF0000
+		lw	$s5, 0($s4)
+		beq	$s5, $zero, wait
+		
+		lw	$t9, 0xFFFF0004
+		bne	$t9, 0x00000031, start
+		
+	#lw	$a1, dirUp
+	li	$a2, 1
+	sw	$a2, ball_status
 	
+	jal	moveBall
 	mover:
 	move $a0, $s0
-	#jal moveBall
-	#li 	$v0, 12 #input de caractere
-	#syscall
+	
+	jal espera_input
 	lw $t9, 0xFFFF0004
-	#move 	$s3, $v0 #passa o caractere para $s3
-	#li 	$s4, 'w'
-	#li 	$s5, 's'
-	#li 	$s6, 'q'
+
 	beq	$t9, 0x00000077, moveUp
 	beq	$t9, 0x00000073, moveDown
 	beq	$t9, 0x00000071, quit
@@ -36,6 +50,23 @@ main:
 	syscall	
 	
 	j mover
+
+espera_input:
+li	$t0, 0xFFFF0000
+check_key:
+	lw	$t1, 0($t0)
+	
+	lw	$a2, ball_status 
+	move	$a0, $s0
+	jal	moveBall
+	
+	li 	$a0, 10	
+	li 	$v0, 32	
+	syscall	
+		
+	beq 	$t1, $zero, check_key
+	jr 	$ra
+	
 moveUp:
 	sw 	$zero, 0xFFFF0004
 	move	$a0, $s0
@@ -44,9 +75,7 @@ moveUp:
 	jal	uploadPaddlePosition
 	
 	lw 	$s7, 0($s0) 
-	nop
-	nop
-	nop
+
 	addi	$s7, $s7, -1024
 	sw 	$s7, 0($s0)
 	
@@ -65,9 +94,7 @@ moveDown:
 	jal	uploadPaddlePosition
 	
 	lw $s7, 0($s0)
-	nop
-	nop
-	nop
+
 	addi	$s7, $s7, 1024
 	sw $s7, 0($s0)
 	
@@ -84,6 +111,91 @@ quit:
     	
 exitMoving:
 j mover
+
+
+##=============
+# uploadPaddlePosition
+#
+#	recebe o endereço da origem da raquete do player e
+#	a cor que ela será pintada
+##=============
+uploadPaddlePosition:#recebe a origem e a cor
+
+lw $t1, 0($a0)
+li $t0, 16
+
+loop:
+	sw $a1, 0($t1)
+	addi $t1, $t1 ,512
+	addi $t0, $t0, -1
+	bnez $t0, loop
+	
+jr 	$ra
+
+
+moveBall:
+	lw	$t0, 8($a0) #carrega origem bola
+	
+	bne	$a2, 1, def_dir_down
+	li	$t4, -1012
+	j continua
+	
+	def_dir_down:
+	bne	$a2, 2, def_esq_up 
+	li	$t4, 1036
+	j continua
+	
+	def_esq_up:
+	bne	$a2, 3, def_esq_down
+	li	$t4, -1036
+	j continua
+	
+	def_esq_down:
+	li	$t4, 1012
+	
+	continua:
+	li 	$t1, 2 #tamanho bola
+	add	$t0, $t0, $t4
+	sw	$t0, 8($a0)
+	li 	$t3, 0x00d3d3d3 #cor bola
+	
+ 	line1:
+ 		li 	$t2, 2
+ 		column1:
+ 			sw 	$t3, 0($t0)
+ 			addi 	$t0, $t0, 4
+ 			addi 	$t2, $t2, -1
+ 			bnez 	$t2, column1
+ 	
+ 		addi 	$t0, $t0, 504
+ 		addi 	$t1, $t1, -1
+ 		bnez 	$t1, line1
+
+#addi 	$sp, $sp, -4
+#sw	$ra, 0($sp)
+#jal	check_colision
+
+blt	$t0, 0x10010200, cima #endereço menor que o menor endereço do display
+#bgt	$t0, 0x10017800, baixo
+
+#ble	$a2, 2, dirHit
+#bgt	$a2, 2, esqHit
+
+retorno:
+jr 	$ra
+
+cima:
+	beq	$a2, 1, to_dir_down
+	#to_esq_down
+	li	$a2, 4
+	sw	$a2, ball_status
+	to_dir_down:
+	li	$a2, 2
+	sw	$a2, ball_status
+	j retorno
+
+
+#check_colision:
 
 
 ##=============
@@ -158,51 +270,4 @@ startBoard:
  		bnez $t7, line
  	
 	jr $ra
-	
-##=============
-# uploadPaddlePosition
-#
-#	recebe o endereço da origem da raquete do player e
-#	a cor que ela será pintada
-##=============
-uploadPaddlePosition:#recebe a origem e a cor
-
-li $t0, 16
-lw $t1, 0($a0)
-nop
-	nop
-	nop
-loop:
-	sw $a1, 0($t1)
-	addi $t1, $t1 ,512
-	addi $t0, $t0, -1
-	bnez $t0, loop
-	
-jr 	$ra
-
-
-moveBall:
-	lw 	$t0, 8($a0)
-	nop
-	nop
-	nop
-	addi 	$t0, $t0, 1000
-	sw 	$t0, 8($a0)
-	
-	li 	$t1, 2
-	
-	li 	$t3, 0x00d3d3d3
-	
- 	line1:
- 		li 	$t2, 2
- 		column1:
- 			sw 	$t3, 0($t0)
- 			addi 	$t0, $t0, 4
- 			addi 	$t2, $t2, -1
- 			bnez 	$t2, column1
- 	
- 		addi 	$t0, $t0, 504
- 		addi 	$t1, $t1, -1
- 		bnez 	$t1, line1
- 	
-jr 	$ra
+	 
