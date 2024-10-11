@@ -9,7 +9,7 @@
 	dirDown:	1036
 	esqUp:		-1036
 	esqDown:	1012
-	ball_status:	0
+	ball_status:	1
 .text
 .globl main
 
@@ -21,98 +21,71 @@ main:
 	li 	$s1, 0x00000000 #cor preta
 	li 	$s2, 0x00d3d3d3 #cor cinza
 	
-	start:
-		wait:
-		li	$s4, 0xFFFF0000
-		lw	$s5, 0($s4)
-		beq	$s5, $zero, wait
-		
-		lw	$t9, 0xFFFF0004
-		bne	$t9, 0x00000031, start
-		
-	#lw	$a1, dirUp
-	li	$a2, 1
-	sw	$a2, ball_status
+	jal start
 	
-	jal	moveBall
-	mover:
-	move $a0, $s0
+	jogo:
+		move $a0, $s0
 	
-	jal espera_input
-	lw $t9, 0xFFFF0004
+		jal check_input
+		move	$s4, $v0
+		beqz	$s4, no_input
+		
+		lw $s3, 0xFFFF0004
+		
+		move	$a1, $s1
+		jal	uploadPaddlePosition
+		
+		beq	$s3, 0x00000077, moveUp
+		beq	$s3, 0x00000073, moveDown
+		beq	$s3, 0x00000071, quit
+	
+	no_input:
+		move	$a1, $s2
+		jal	uploadPaddlePosition #atualiza paddle do player
+		
+		sw 	$zero, 0xFFFF0004 #zera o input
+		sw	$zero, 0xFFFF0000
+		li 	$a0, 10	
+		li 	$v0, 32	# pause for 250 milisec
+		syscall	
+	
+	j jogo
 
-	beq	$t9, 0x00000077, moveUp
-	beq	$t9, 0x00000073, moveDown
-	beq	$t9, 0x00000071, quit
-	
-	li 	$a0, 250	#
-	li 	$v0, 32	# pause for 250 milisec
-	syscall	
-	
-	j mover
-
-espera_input:
-li	$t0, 0xFFFF0000
-check_key:
-	lw	$t1, 0($t0)
-	
-	lw	$a2, ball_status 
-	move	$a0, $s0
-	jal	moveBall
-	
-	li 	$a0, 10	
-	li 	$v0, 32	
-	syscall	
-		
-	beq 	$t1, $zero, check_key
+check_input:
+	li	$t0, 0xFFFF0000
+	lw	$v0, 0($t0)
+	#beq 	$t1, $zero, check_key
 	jr 	$ra
-	
-moveUp:
-	sw 	$zero, 0xFFFF0004
-	move	$a0, $s0
-	move 	$a1, $s1 #recebe a cor preta
-	
-	jal	uploadPaddlePosition
-	
-	lw 	$s7, 0($s0) 
 
+moveUp:
+	lw 	$s7, 0($s0) 
 	addi	$s7, $s7, -1024
 	sw 	$s7, 0($s0)
-	
-	move	$a0, $s0
-	move	$a1, $s2
-	
-	jal	uploadPaddlePosition
-	
-	j	exitMoving
+
+	j	no_input
 
 moveDown:
-	sw 	$zero, 0xFFFF0004
-	move	$a0, $s0
-	move 	$a1, $s1 #recebe a cor preta
-	
-	jal	uploadPaddlePosition
-	
 	lw $s7, 0($s0)
-
 	addi	$s7, $s7, 1024
 	sw $s7, 0($s0)
-	
-	move	$a0, $s0
-	move 	$a1, $s2
-	
-	jal	uploadPaddlePosition
-	
-	j	exitMoving
+
+	j	no_input
 
 quit:
 	li	$v0, 10
     	syscall
-    	
-exitMoving:
-j mover
 
-
+start:
+	wait:
+		li	$t0, 0xFFFF0000
+		lw	$t1, 0($t0)
+		beq	$t1, $zero, wait
+		
+	lw	$t2, 0xFFFF0004
+	bne	$t2, 0x00000031, start
+	
+	jr $ra
+	
 ##=============
 # uploadPaddlePosition
 #
