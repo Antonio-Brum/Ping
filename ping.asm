@@ -4,17 +4,18 @@
                    8192, 8704, 9216, 9728, 10240, 10752, 11264, 11776, 12288, 12800, 13312, 13824, 14336, 14848, 15360, 15872,
                    16384, 16896, 17408, 17920, 18432, 18944, 19456, 19968, 20480, 20992, 21504, 22016, 22528, 23040, 23552, 24064,
                    24576, 25088, 25600, 26112, 26624, 27136, 27648, 28160, 28672, 29184, 29696, 30208, 30720, 31232, 31744, 32256, 32768
-	origins: .space 12
-	dirUp:		-1012	
-	dirDown:	1036
-	esqUp:		-1036
-	esqDown:	1012
+	origins: .space 8
+	ball_x:	.space 4
+	ball_y:	.space 4
 	ball_status:	1
 .text
 .globl main
 
 main:
 	la	$s0, origins #s0 recebe o vetor 'origins'
+	la	$s6, ball_x
+	la	$s7, ball_y
+	
 	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
 	jal	startBoard
 	
@@ -43,6 +44,13 @@ main:
 		move	$a1, $s2
 		jal	uploadPaddlePosition #atualiza paddle do player
 		
+		move	$a0, $s6 #x
+		move	$a3, $s7 #y
+
+		jal	moveBall
+		
+		jal	check_colision
+		
 		sw 	$zero, 0xFFFF0004 #zera o input
 		sw	$zero, 0xFFFF0000
 		li 	$a0, 10	
@@ -50,6 +58,107 @@ main:
 		syscall	
 	
 	j jogo
+
+moveBall:
+	lw	$t0, 0($a0) #carrega x da bola
+	lw	$t1, 0($a3) #carrega y da bola
+	
+	bne	$a2, 1, def_dir_down
+	li	$t4, -1012
+	j continua
+	
+	def_dir_down:
+	bne	$a2, 2, def_esq_up  
+	li	$t4, 1036
+	j continua
+	
+	def_esq_up:
+	bne	$a2, 3, def_esq_down
+	li	$t4, -1036
+	j continua
+	
+	def_esq_down:
+	li	$t4, 1012
+	
+	continua:
+	li 	$t2, 2 #tamanho bola
+	#add	$t0, $t0, $t4
+	#posição da bola é t0 + t1
+	li 	$t3, 0x00d3d3d3 #cor bola
+	
+ 	line1:
+ 		li 	$t3, 2
+ 		column1:
+ 			sw 	$t3, 0($t0)
+ 			addi 	$t0, $t0, 4
+ 			addi 	$t3, $t3, -1
+ 			bnez 	$t3, column1
+ 	
+ 		addi 	$t0, $t0, 504
+ 		addi 	$t2, $t2, -1
+ 		bnez 	$t2, line1
+
+#addi 	$sp, $sp, -4
+#sw	$ra, 0($sp)
+#jal	check_colision
+
+	#blt	$t0, 0x10010200, cima #endereço menor que o menor endereço do display
+#bgt	$t0, 0x10017800, baixo
+
+#ble	$a2, 2, dirHit
+#bgt	$a2, 2, esqHit
+
+	#retorno:
+	jr 	$ra
+
+	#cima:
+		#beq	$a2, 1, to_dir_down
+		#to_esq_down
+		#li	$a2, 4
+		#sw	$a2, ball_status
+		#to_dir_down:
+		#li	$a2, 2
+		#sw	$a2, ball_status
+		#j retorno
+check_colision:
+	lw	$t0, 8($a0)
+	
+	blt	$t0, 0x10010200, cima
+	#bgt	$t0, 0x10017800, baixo
+	
+	#ble	$a2, 2, dirHit
+	#bgt	$a2, 2, esqHit
+	
+	jr	$ra
+
+	cima:
+		beq	$a2, 1, to_dir_down
+		to_esq_down: 
+		li	$a2, 4
+		sw	$a2, ball_status
+		to_dir_down:
+		li	$a2, 2
+		sw	$a2, ball_status
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 check_input:
 	li	$t0, 0xFFFF0000
@@ -75,12 +184,13 @@ quit:
 	li	$v0, 10
     	syscall
 
+
 start:
 	wait:
 		li	$t0, 0xFFFF0000
 		lw	$t1, 0($t0)
 		beq	$t1, $zero, wait
-		
+	
 	lw	$t2, 0xFFFF0004
 	bne	$t2, 0x00000031, start
 	
@@ -106,67 +216,6 @@ loop:
 jr 	$ra
 
 
-moveBall:
-	lw	$t0, 8($a0) #carrega origem bola
-	
-	bne	$a2, 1, def_dir_down
-	li	$t4, -1012
-	j continua
-	
-	def_dir_down:
-	bne	$a2, 2, def_esq_up 
-	li	$t4, 1036
-	j continua
-	
-	def_esq_up:
-	bne	$a2, 3, def_esq_down
-	li	$t4, -1036
-	j continua
-	
-	def_esq_down:
-	li	$t4, 1012
-	
-	continua:
-	li 	$t1, 2 #tamanho bola
-	add	$t0, $t0, $t4
-	sw	$t0, 8($a0)
-	li 	$t3, 0x00d3d3d3 #cor bola
-	
- 	line1:
- 		li 	$t2, 2
- 		column1:
- 			sw 	$t3, 0($t0)
- 			addi 	$t0, $t0, 4
- 			addi 	$t2, $t2, -1
- 			bnez 	$t2, column1
- 	
- 		addi 	$t0, $t0, 504
- 		addi 	$t1, $t1, -1
- 		bnez 	$t1, line1
-
-#addi 	$sp, $sp, -4
-#sw	$ra, 0($sp)
-#jal	check_colision
-
-blt	$t0, 0x10010200, cima #endereço menor que o menor endereço do display
-#bgt	$t0, 0x10017800, baixo
-
-#ble	$a2, 2, dirHit
-#bgt	$a2, 2, esqHit
-
-retorno:
-jr 	$ra
-
-cima:
-	beq	$a2, 1, to_dir_down
-	#to_esq_down
-	li	$a2, 4
-	sw	$a2, ball_status
-	to_dir_down:
-	li	$a2, 2
-	sw	$a2, ball_status
-	j retorno
-
 
 #check_colision:
 
@@ -188,11 +237,10 @@ startBoard:
 	sll $t4 ,$t4, 2 #multiplica pelo tamanho de cada palavra
 	add $t4, $t4, $t1 #$t4 contém o endereço do elemento 24 do array
 	lw $t5, 0($t4) #t5 recebe o valor que representa a linha 24
-	nop
-	nop
-	nop
-	add $t5, $t5, $t0 #t5 contém o endereço da linha
-	move $t6, $t5
+
+	add 	$t5, $t5, $t0 #t5 contém o endereço da linha
+	addi	$t5, $t5, 36
+	move 	$t6, $t5
 	
 	sw $t5, 0($a0)# origins [0] contém a origem da raquete esquerda
 	draw1:
@@ -201,9 +249,8 @@ startBoard:
 	addi $t3, $t3, -1
 	bnez $t3, draw1
 	
-	
 	move $t6, $t5
-	addi $t6, $t6, 508
+	addi $t6, $t6, 440
 	li $t3, 16
 	
 	sw $t6, 4($a0)# origins [1] contém a origem da raquete direita
@@ -215,20 +262,23 @@ startBoard:
 	
 	#bola
 	
-	li $t4, 31 #primeira linha na linha 31
- 	#calculando o índice do vetor
- 	sll $t4, $t4, 2
- 	add $t4, $t4, $t1
- 	lw $t5, 0($t4)
- 	nop
-	nop
-	nop
- 	#calculando a posição no display
- 	add $t5, $t5, $t0
- 	move $t6, $t5
- 	addi $t6, $t6, 252
+	li 	$t4, 31 #Y da origem da bola
+	li	$t9, 63 #X da origem da bola
 	
-	sw $t6, 8($a0) #origins [2] contém a origem da bola
+	sw	$t4, ball_y
+	sw	$t9, ball_x
+ 	#calculando o índice do vetor
+ 	sll 	$t4, $t4, 2
+ 	sll	$t9, $t9, 2
+ 	add 	$t4, $t4, $t1
+ 	lw 	$t5, 0($t4)
+ 
+ 	#calculando a posição no display
+ 	add 	$t5, $t5, $t0
+ 	add	$t5, $t5, $t9
+ 
+ 	move $t6, $t5
+	
 	li $t7, 2
  	line:
  		li $t8, 2
