@@ -42,8 +42,6 @@ main:
 		beq	$s3, 0x00000071, quit
 	
 	no_input:
-		sw 	$zero, 0xFFFF0004 #zera o input
-		sw	$zero, 0xFFFF0000
 		
 		move	$a1, $s2
 		move	$a0, $s0
@@ -58,6 +56,9 @@ main:
 		li 	$a0, 20
 		li 	$v0, 32	# pause for 20 milisec
 		syscall	
+		sw 	$zero, 0xFFFF0004 #zera o input
+		sw	$zero, 0xFFFF0000
+		
 	
 	j jogo
 
@@ -87,10 +88,7 @@ moveBall:
 	li	$a1, 0x00000000
 	jal	draw_ball
 	
-	li 	$a0, 20
-	li 	$v0, 32	# pause for 20 milisec
-	syscall	
-		
+	
 	lw	$ra, 0($sp)
 	addi	$sp, $sp, 4
 	
@@ -207,7 +205,7 @@ check_input:
 moveUp:
 	lw 	$s7, 0($s0) 
 	beq	$s7, 0, no_input
-	addi	$s7, $s7, -2
+	addi	$s7, $s7, -4
 	sw 	$s7, 0($s0)
 
 	j	no_input
@@ -215,7 +213,7 @@ moveUp:
 moveDown:
 	lw $s7, 0($s0)
 	beq	$s7, 48, no_input
-	addi	$s7, $s7, 2
+	addi	$s7, $s7, 4
 	sw $s7, 0($s0)
 
 	j	no_input
