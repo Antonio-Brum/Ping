@@ -51,6 +51,7 @@ main:
 
 		jal	moveBall
 		
+		move	$a0, $s0
 		jal	check_colision
 		
 		sw 	$zero, 0xFFFF0004 #zera o input
@@ -148,10 +149,12 @@ check_colision:
 	lw	$t1, ball_y #carrega y da bola
 	lw	$t2, vel_x
 	lw	$t3, vel_y
+	lw	$t4, 0($a0) #y do paddle do player
 	
 	beq	$t1, 0, horizontal
 	beq	$t1, 63, horizontal
 	
+	beq	$t0, 9, player_collision
 	
 	beq	$t0, 0, vertical
 	beq	$t0, 127, vertical
@@ -172,10 +175,18 @@ check_colision:
 		
 		j 	retorno
 
-
-
-
-
+	player_collision:
+		addi	$t6, $t4, 1 #como a bola tem 2 de altura, ela precisa estar na posição maior que 'paddle + 1'
+		blt	$t1, $t6, retorno #verifica se a bola passou por cima do paddle 
+		
+		addi	$t6, $t6, 17 #calcula a parte de baixo do paddle
+		bgt	$t1, $t6, retorno
+		
+		not	$t2, $t2
+		addi	$t2, $t2, 1
+		sw	$t2, vel_x
+		
+		j 	retorno
 
 
 
