@@ -152,6 +152,7 @@ check_colision:
 	beq	$t1, 0, horizontal
 	beq	$t1, 63, horizontal
 	
+	
 	beq	$t0, 0, vertical
 	beq	$t0, 127, vertical
 	
@@ -192,14 +193,16 @@ check_input:
 
 moveUp:
 	lw 	$s7, 0($s0) 
-	addi	$s7, $s7, -1024
+	beq	$s7, 0, no_input
+	addi	$s7, $s7, -2
 	sw 	$s7, 0($s0)
 
 	j	no_input
 
 moveDown:
 	lw $s7, 0($s0)
-	addi	$s7, $s7, 1024
+	beq	$s7, 48, no_input
+	addi	$s7, $s7, 2
 	sw $s7, 0($s0)
 
 	j	no_input
@@ -228,20 +231,25 @@ start:
 ##=============
 uploadPaddlePosition:#recebe a origem e a cor
 
-lw $t1, 0($a0)
-li $t0, 16
+li 	$t0, 16
+lw 	$t1, 0($a0)
+la	$t2, lines
+
+sll	$t1, $t1, 2
+add	$t1, $t1, $t2
+lw	$t3, 0($t1)
+
+addi	$t3, $t3, 0x10010000
+addi	$t3, $t3, 36
 
 loop:
-	sw $a1, 0($t1)
-	addi $t1, $t1 ,512
+	sw $a1, 0($t3)
+	addi $t3, $t3 ,512
 	addi $t0, $t0, -1
 	bnez $t0, loop
 	
 jr 	$ra
 
-
-
-#check_colision:
 
 
 ##=============
@@ -258,15 +266,18 @@ startBoard:
 	li $t2, 0x00d3d3d3 #cor
 	li $t3, 16 #altura raquete
 	li $t4, 24 #quero a linha 24
+	
+	sw	$t4, 0($a0) #salvando posição da raquete esquerda
+	
 	sll $t4 ,$t4, 2 #multiplica pelo tamanho de cada palavra
 	add $t4, $t4, $t1 #$t4 contém o endereço do elemento 24 do array
 	lw $t5, 0($t4) #t5 recebe o valor que representa a linha 24
 
 	add 	$t5, $t5, $t0 #t5 contém o endereço da linha
-	addi	$t5, $t5, 36
+	addi	$t5, $t5, 36 #x=9
 	move 	$t6, $t5
 	
-	sw $t5, 0($a0)# origins [0] contém a origem da raquete esquerda
+	#sw $t5, 0($a0)# origins [0] contém a origem da raquete esquerda
 	draw1:
 	sw $t2, 0($t6)
 	addi $t6, $t6 ,512
