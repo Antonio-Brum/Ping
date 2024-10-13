@@ -1,3 +1,4 @@
+	#modificar vetor para o padrão que o prof pediu
 	.data
 	display: .space 0x8000 #espaço do display 32768 "pixels"
 	lines: .word 0, 512, 1024, 1536, 2048, 2560, 3072, 3584, 4096, 4608, 5120, 5632, 6144, 6656, 7168, 7680,
@@ -7,6 +8,8 @@
 	origins: .space 8
 	ball_x:	.space 4
 	ball_y:	.space 4
+	vel_x:  1
+	vel_y:	-1
 	ball_status:	1
 .text
 .globl main
@@ -45,7 +48,6 @@ main:
 		jal	uploadPaddlePosition #atualiza paddle do player
 		
 		move	$a0, $s6 #x
-		move	$a3, $s7 #y
 
 		jal	moveBall
 		
@@ -60,44 +62,39 @@ main:
 	j jogo
 
 moveBall:
-	lw	$t0, 0($a0) #carrega x da bola
-	lw	$t1, 0($a3) #carrega y da bola
+	lw	$t0, ball_x #carrega x da bola
+	lw	$t1, ball_y #carrega y da bola
+	lw	$t2, vel_x
+	lw	$t3, vel_y
+	la	$t4, lines
 	
-	bne	$a2, 1, def_dir_down
-	li	$t4, -1012
-	j continua
+	add	$t0, $t0, $t2 # movimenta 1 x
+	add	$t1, $t1, $t3 # movimenta 1 y
 	
-	def_dir_down:
-	bne	$a2, 2, def_esq_up  
-	li	$t4, 1036
-	j continua
+	#salva a nova posição da bola
+	sw	$t0, ball_x 
+	sw	$t1, ball_y
+	#
 	
-	def_esq_up:
-	bne	$a2, 3, def_esq_down
-	li	$t4, -1036
-	j continua
+	sll	$t5, $t0, 2 #quantos pixels em x
 	
-	def_esq_down:
-	li	$t4, 1012
+	#acessando o elemento do array 'lines'
+	sll	$t6, $t1, 2
+	add	$t6, $t6, $t4
+	lw	$t7, 0($t6)
+	#
 	
-	continua:
-	li 	$t2, 2 #tamanho bola
-	#add	$t0, $t0, $t4
-	#posição da bola é t0 + t1
-	li 	$t3, 0x00d3d3d3 #cor bola
+	add	$t7, $t7, $t5 #soma y com x
 	
- 	line1:
- 		li 	$t3, 2
- 		column1:
- 			sw 	$t3, 0($t0)
- 			addi 	$t0, $t0, 4
- 			addi 	$t3, $t3, -1
- 			bnez 	$t3, column1
- 	
- 		addi 	$t0, $t0, 504
- 		addi 	$t2, $t2, -1
- 		bnez 	$t2, line1
-
+	addi	$t7, $t7, 0x10010000 #acessa o display
+	
+	addi	$sp, $sp, -4
+	sw	$ra, 0($sp)
+	
+	#draw_ball recebe cor, posição (em número bruto)	
+	jal	draw_ball
+	#li 	$t3, 0x00d3d3d3 #cor bola
+		
 #addi 	$sp, $sp, -4
 #sw	$ra, 0($sp)
 #jal	check_colision
@@ -141,8 +138,19 @@ check_colision:
 		sw	$a2, ball_status
 
 
-
-
+draw_ball:
+	li	$t0, 
+	line1:
+ 		li 	$t8, 2
+ 		column1:
+ 			sw 	$t3, 0($t6)
+ 			addi 	$t6, $t6, 4
+ 			addi 	$t8, $t8, -1
+ 			bnez 	$t8, column1
+ 	
+ 		addi 	$t6, $t6, 504
+ 		addi 	$t2, $t2, -1
+ 		bnez 	$t2, line1
 
 
 
