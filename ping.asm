@@ -299,7 +299,7 @@ startBoard:
 	li $t4, 24 #quero a linha 24
 	
 	sw	$t4, 0($a0) #salvando posição da raquete esquerda
-	
+	sw	$t4, 4($a0) #salvando Y do bot
 	sll $t4 ,$t4, 2 #multiplica pelo tamanho de cada palavra
 	add $t4, $t4, $t1 #$t4 contém o endereço do elemento 24 do array
 	lw $t5, 0($t4) #t5 recebe o valor que representa a linha 24
@@ -315,9 +315,9 @@ startBoard:
 		addi $t3, $t3, -1
 		bnez $t3, draw_player
 	
-	move $t6, $t5
-	addi $t6, $t6, 440
-	li $t3, 16
+	move 	$t6, $t5
+	addi 	$t6, $t6, 440
+	li 	$t3, 16
 	
 	# origins [1] contém a origem da raquete direita
 	draw_cpu: 
@@ -396,16 +396,16 @@ move_cpu:
 	    
 	       
 uploadCpuPaddlePosition:   # Recebe a origem e a cor da raquete da CPU
-	lw  $t1, 4($a0)         # Carrega a origem da raquete da CPU a partir de origins[1]
-	la  $t2, lines          # Carrega o endereço base da linha (vetor de deslocamentos)
+	lw  	$t1, 4($a0)         # Carrega a origem da raquete da CPU a partir de origins[1]
+	la  	$t2, lines          # Carrega o endereço base da linha (vetor de deslocamentos)
 	
-	sll $t1, $t1, 2         # Multiplica a posição da raquete por 4 (palavras)
-	add $t1, $t1, $t2       # Adiciona o deslocamento no vetor lines
-	lw  $t3, 0($t1)         # Carrega o valor do vetor lines correspondente à linha da raquete
+	sll 	$t1, $t1, 2         # Multiplica a posição da raquete por 4 (palavras)
+	add 	$t1, $t1, $t2       # Adiciona o deslocamento no vetor lines
+	lw  	$t3, 0($t1)         # Carrega o valor do vetor lines correspondente à linha da raquete
 
-	la $t3, display         # Posição
-	li  $t0, 16             # Define a altura da raquete (16 pixels)
-	addi $t3, $t3, 480     # X da raquete da CPU (linha à direita da tela)
+	addi 	$t3, $t3, 0x10010000         # Posição
+	li  	$t0, 16             # Define a altura da raquete (16 pixels)
+	addi 	$t3, $t3, 480     # X da raquete da CPU (linha à direita da tela)
 
 	
 	cpu_loop:
