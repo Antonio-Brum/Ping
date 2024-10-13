@@ -83,7 +83,7 @@ moveBall:
 	li	$a1, 0x00000000
 	jal	draw_ball
 	
-	move	$ra, $sp
+	lw	$ra, 0($sp)
 	addi	$sp, $sp, 4
 	
 	
@@ -114,6 +114,10 @@ moveBall:
 	move	$a0, $t7
 	li	$a1, 0x00d3d3d3	
 	jal	draw_ball
+	
+	lw	$ra, 0($sp)
+	addi	$sp, $sp, 4
+	
 	jr 	$ra
 
 
