@@ -11,6 +11,9 @@
 	vel_x:  1
 	vel_y:	-1
 	ball_status:	1
+	cpu_move_delay:  .word 0    
+    	cpu_move_limit:  .word 100000  
+	
 .text
 .globl main
 
@@ -42,23 +45,33 @@ main:
 		beq	$s3, 0x00000071, quit
 	
 	no_input:
+		sw 	$zero, 0xFFFF0004 #zera o input
+		sw	$zero, 0xFFFF0000
 		
 		move	$a1, $s2
 		move	$a0, $s0
 		jal	uploadPaddlePosition #atualiza paddle do player
 	
-		jal	moveBall
+	#Logica da CPU:
+		move $a0, $s0
+		move $a1, $s1       # cor pra pintar a cpu (aqui apaga)
+    		jal uploadCpuPaddlePosition  # pintar a cpu
 		
-		move	$a0, $s0
-		jal	check_colision
+		move $a0, $s0
+		jal move_cpu
 		
+		move $a0, $s0
+		move $a1, $s2      # cor pra pintar a cpu (aqui deesenha_
+    		jal uploadCpuPaddlePosition  # pintar a cpu
 
+    		
+		move $a0, $s0
+		jal	check_colision
+		jal	moveBall
+
+		li 	$v0, 32
 		li 	$a0, 20
-		li 	$v0, 32	# pause for 20 milisec
 		syscall	
-		sw 	$zero, 0xFFFF0004 #zera o input
-		sw	$zero, 0xFFFF0000
-		
 	
 	j jogo
 
@@ -87,7 +100,6 @@ moveBall:
 	move	$a0, $t7
 	li	$a1, 0x00000000
 	jal	draw_ball
-	
 	
 	lw	$ra, 0($sp)
 	addi	$sp, $sp, 4
@@ -156,6 +168,7 @@ check_colision:
 	beq	$t1, 62, horizontal
 	
 	beq	$t0, 10, player_collision
+	beq 	$t0, 502, cpu_collision 
 	
 	beq	$t0, 0, vertical
 	beq	$t0, 126, vertical
@@ -189,31 +202,40 @@ check_colision:
 		
 		j 	retorno
 
+	cpu_collision:
+		lw  $t5, 4($a0)             # Load right paddle y position (origin[1])
 
-
-
-
-
-
-
+		addi $t6, $t5, 1            # Paddle's top edge + 1 pixel
+    		blt  $t1, $t6, retorno       # If ball is above paddle, return
+    
+    		addi $t6, $t6, 17           # Paddle's bottom edge (16 height)
+    		bgt  $t1, $t6, retorno       # If ball is below paddle, return
+    
+    		not $t2, $t2                # Reverse horizontal velocity (ball bounce)
+		addi $t2, $t2, 1
+    		sw  $t2, vel_x
+    
+    		j   retorno
 
 check_input:
-	li	$t0, 0xFFFF0000
-	lw	$v0, 0($t0)
-	jr 	$ra
+    li  $t0, 0xFFFF0000
+    lw  $v0, 0($t0)
+
+    jr  $ra
+
 
 moveUp:
 	lw 	$s7, 0($s0) 
 	beq	$s7, 0, no_input
-	addi	$s7, $s7, -4
+	addi	$s7, $s7, -2
 	sw 	$s7, 0($s0)
-
+	
 	j	no_input
 
 moveDown:
 	lw $s7, 0($s0)
 	beq	$s7, 48, no_input
-	addi	$s7, $s7, 4
+	addi	$s7, $s7, 2
 	sw $s7, 0($s0)
 
 	j	no_input
@@ -241,25 +263,23 @@ start:
 #	a cor que ela será pintada
 ##=============
 uploadPaddlePosition:#recebe a origem e a cor
+	lw 	$t1, 0($a0)
+	la	$t2, lines
 
+	sll	$t1, $t1, 2
+	add	$t1, $t1, $t2
+	lw	$t3, 0($t1)
+	li 	$t0, 16
+	addi	$t3, $t3, 0x10010000
+	addi	$t3, $t3, 36
 
-lw 	$t1, 0($a0)
-la	$t2, lines
+	loop:
+		sw $a1, 0($t3)
+		addi $t3, $t3 ,512
+		addi $t0, $t0, -1
+		bnez $t0, loop
 
-sll	$t1, $t1, 2
-add	$t1, $t1, $t2
-lw	$t3, 0($t1)
-li 	$t0, 16
-addi	$t3, $t3, 0x10010000
-addi	$t3, $t3, 36
-
-loop:
-	sw $a1, 0($t3)
-	addi $t3, $t3 ,512
-	addi $t0, $t0, -1
-	bnez $t0, loop
-	
-jr 	$ra
+	jr 	$ra
 
 
 
@@ -288,23 +308,23 @@ startBoard:
 	addi	$t5, $t5, 36 #x=9
 	move 	$t6, $t5
 	
-	#sw $t5, 0($a0)# origins [0] contém a origem da raquete esquerda
-	draw1:
-	sw $t2, 0($t6)
-	addi $t6, $t6 ,512
-	addi $t3, $t3, -1
-	bnez $t3, draw1
+	# origins [0] contém a origem da raquete esquerda
+	draw_player:
+		sw $t2, 0($t6)
+		addi $t6, $t6 ,512
+		addi $t3, $t3, -1
+		bnez $t3, draw_player
 	
 	move $t6, $t5
 	addi $t6, $t6, 440
 	li $t3, 16
 	
-	sw $t6, 4($a0)# origins [1] contém a origem da raquete direita
-	draw2: 
-	sw $t2, 0($t6)
-	addi $t6, $t6, 512
-	addi $t3, $t3, -1
-	bnez $t3, draw2
+	# origins [1] contém a origem da raquete direita
+	draw_cpu: 
+		sw $t2, 4($t6)
+		addi $t6, $t6, 512
+		addi $t3, $t3, -1
+		bnez $t3, draw_cpu
 	
 	#bola
 	
@@ -339,4 +359,59 @@ startBoard:
  		bnez $t7, line
  	
 	jr $ra
-	 
+	
+	
+move_cpu:
+    lw    $t2, cpu_move_delay    
+    lw    $t3, cpu_move_limit    
+    
+    blt   $t2, $t3, return_cpu   
+    
+    li    $t2, 0                 
+    sw    $t2, cpu_move_delay    
+    
+    lw    $t0, 4($a0)            
+    lw    $t1, ball_y            
+
+   # blt   $t1, $t0, moveUpCPU    
+    #bgt   $t1, $t0, moveDownCPU  
+    
+    j    return_cpu              
+
+	moveUpCPU:
+	    li    $t2, 0                  
+	    beq   $t0, $t2, return_cpu    
+	    addi  $t0, $t0, -2            
+	    sw    $t0, 4($a0)             
+	    j    return_cpu
+
+	moveDownCPU:
+	    li    $t2, 48                 
+	    beq   $t0, $t2, return_cpu    
+	    addi  $t0, $t0, 2             
+	    sw    $t0, 4($a0)             
+
+	return_cpu:
+		jr    $ra     
+	    
+	       
+uploadCpuPaddlePosition:   # Recebe a origem e a cor da raquete da CPU
+	lw  $t1, 4($a0)         # Carrega a origem da raquete da CPU a partir de origins[1]
+	la  $t2, lines          # Carrega o endereço base da linha (vetor de deslocamentos)
+	
+	sll $t1, $t1, 2         # Multiplica a posição da raquete por 4 (palavras)
+	add $t1, $t1, $t2       # Adiciona o deslocamento no vetor lines
+	lw  $t3, 0($t1)         # Carrega o valor do vetor lines correspondente à linha da raquete
+
+	la $t3, display         # Posição
+	li  $t0, 16             # Define a altura da raquete (16 pixels)
+	addi $t3, $t3, 480     # X da raquete da CPU (linha à direita da tela)
+
+	
+	cpu_loop:
+	    sw $a1, 0($t3)          # Escreve a cor da raquete no display
+	    addi $t3, $t3, 512      # Move para a próxima linha da raquete
+	    addi $t0, $t0, -1       # Decrementa a altura
+	    bnez $t0, cpu_loop      # Continua até desenhar toda a raquete (16 linhas)
+
+	    jr $ra         
