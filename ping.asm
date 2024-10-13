@@ -68,6 +68,25 @@ moveBall:
 	lw	$t3, vel_y
 	la	$t4, lines
 	
+	sll	$t5, $t0, 2
+	sll	$t6, $t1, 2
+	add	$t6, $t6, $t4
+	lw	$t7, 0($t6)
+	add	$t7, $t7, $t5 #soma y com x
+	addi	$t7, $t7, 0x10010000 #acessa o display
+	
+	addi	$sp, $sp, -4
+	sw	$ra, 0($sp)
+	
+	
+	move	$a0, $t7
+	li	$a1, 0x00000000
+	jal	draw_ball
+	
+	move	$ra, $sp
+	addi	$sp, $sp, 4
+	
+	
 	add	$t0, $t0, $t2 # movimenta 1 x
 	add	$t1, $t1, $t3 # movimenta 1 y
 	
@@ -91,32 +110,31 @@ moveBall:
 	addi	$sp, $sp, -4
 	sw	$ra, 0($sp)
 	
-	#draw_ball recebe cor, posição (em número bruto)	
+	#draw_ball recebe cor, posição (em número bruto)
+	move	$a0, $t7
+	li	$a1, 0x00d3d3d3	
 	jal	draw_ball
-	#li 	$t3, 0x00d3d3d3 #cor bola
-		
-#addi 	$sp, $sp, -4
-#sw	$ra, 0($sp)
-#jal	check_colision
-
-	#blt	$t0, 0x10010200, cima #endereço menor que o menor endereço do display
-#bgt	$t0, 0x10017800, baixo
-
-#ble	$a2, 2, dirHit
-#bgt	$a2, 2, esqHit
-
-	#retorno:
 	jr 	$ra
 
-	#cima:
-		#beq	$a2, 1, to_dir_down
-		#to_esq_down
-		#li	$a2, 4
-		#sw	$a2, ball_status
-		#to_dir_down:
-		#li	$a2, 2
-		#sw	$a2, ball_status
-		#j retorno
+
+draw_ball:
+	move	$t5, $a0
+	move	$t6, $a1
+	li	$t7, 2
+	line1:
+ 		li 	$t8, 2
+ 		column1:
+ 			sw 	$t6, 0($t5)
+ 			addi 	$t5, $t5, 4
+ 			addi 	$t8, $t8, -1
+ 			bnez 	$t8, column1
+ 	
+ 		addi 	$t5, $t5, 504
+ 		addi 	$t7, $t7, -1
+ 		bnez 	$t7, line1
+	jr	$ra
+
+
 check_colision:
 	lw	$t0, 8($a0)
 	
@@ -138,19 +156,6 @@ check_colision:
 		sw	$a2, ball_status
 
 
-draw_ball:
-	li	$t0, 
-	line1:
- 		li 	$t8, 2
- 		column1:
- 			sw 	$t3, 0($t6)
- 			addi 	$t6, $t6, 4
- 			addi 	$t8, $t8, -1
- 			bnez 	$t8, column1
- 	
- 		addi 	$t6, $t6, 504
- 		addi 	$t2, $t2, -1
- 		bnez 	$t2, line1
 
 
 
