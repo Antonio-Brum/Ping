@@ -9,7 +9,7 @@
 	ball_x:	.space 4
 	ball_y:	.space 4
 	vel_x:  1
-	vel_y:	-1
+	vel_y:	1
 	ball_status:	1
 .text
 .globl main
@@ -55,12 +55,14 @@ main:
 		
 		sw 	$zero, 0xFFFF0004 #zera o input
 		sw	$zero, 0xFFFF0000
-		li 	$a0, 10	
-		li 	$v0, 32	# pause for 250 milisec
+		li 	$a0, 20
+		li 	$v0, 32	# pause for 20 milisec
 		syscall	
 	
 	j jogo
 
+#falta empilhar os registradores antes de chamar 'draw_ball'
+#e, depois, alterar os registradores usados em 'draw_ball'
 moveBall:
 	lw	$t0, ball_x #carrega x da bola
 	lw	$t1, ball_y #carrega y da bola
@@ -68,12 +70,14 @@ moveBall:
 	lw	$t3, vel_y
 	la	$t4, lines
 	
-	sll	$t5, $t0, 2
+	sll	$t5, $t0, 2 #pixels de x
+	
 	sll	$t6, $t1, 2
 	add	$t6, $t6, $t4
 	lw	$t7, 0($t6)
+	
 	add	$t7, $t7, $t5 #soma y com x
-	addi	$t7, $t7, 0x10010000 #acessa o display
+	addi	$t7, $t7, 0x10010000 #endereço no display
 	
 	addi	$sp, $sp, -4
 	sw	$ra, 0($sp)
@@ -105,7 +109,7 @@ moveBall:
 	
 	add	$t7, $t7, $t5 #soma y com x
 	
-	addi	$t7, $t7, 0x10010000 #acessa o display
+	addi	$t7, $t7, 0x10010000 #endereço no display
 	
 	addi	$sp, $sp, -4
 	sw	$ra, 0($sp)
@@ -140,29 +144,32 @@ draw_ball:
 
 
 check_colision:
-	lw	$t0, 8($a0)
+	lw	$t0, ball_x #carrega x da bola
+	lw	$t1, ball_y #carrega y da bola
+	lw	$t2, vel_x
+	lw	$t3, vel_y
 	
-	blt	$t0, 0x10010200, cima
-	#bgt	$t0, 0x10017800, baixo
+	beq	$t1, 0, horizontal
+	beq	$t1, 63, horizontal
 	
-	#ble	$a2, 2, dirHit
-	#bgt	$a2, 2, esqHit
+	beq	$t0, 0, vertical
+	beq	$t0, 127, vertical
 	
+	retorno:
 	jr	$ra
 
-	cima:
-		beq	$a2, 1, to_dir_down
-		to_esq_down: 
-		li	$a2, 4
-		sw	$a2, ball_status
-		to_dir_down:
-		li	$a2, 2
-		sw	$a2, ball_status
-
-
-
-
-
+	vertical:
+		not	$t2, $t2
+		addi	$t2, $t2, 1
+		sw	$t2, vel_x
+		
+		j	retorno
+	horizontal:
+		not	$t3, $t3
+		addi	$t3, $t3, 1
+		sw	$t3, vel_y
+		
+		j 	retorno
 
 
 
