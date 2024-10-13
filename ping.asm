@@ -9,15 +9,13 @@
 	ball_x:	.space 4
 	ball_y:	.space 4
 	vel_x:  1
-	vel_y:	1
+	vel_y:	-1
 	ball_status:	1
 .text
 .globl main
 
 main:
 	la	$s0, origins #s0 recebe o vetor 'origins'
-	la	$s6, ball_x
-	la	$s7, ball_y
 	
 	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
 	jal	startBoard
@@ -44,18 +42,19 @@ main:
 		beq	$s3, 0x00000071, quit
 	
 	no_input:
-		move	$a1, $s2
-		jal	uploadPaddlePosition #atualiza paddle do player
+		sw 	$zero, 0xFFFF0004 #zera o input
+		sw	$zero, 0xFFFF0000
 		
-		move	$a0, $s6 #x
-
+		move	$a1, $s2
+		move	$a0, $s0
+		jal	uploadPaddlePosition #atualiza paddle do player
+	
 		jal	moveBall
 		
 		move	$a0, $s0
 		jal	check_colision
 		
-		sw 	$zero, 0xFFFF0004 #zera o input
-		sw	$zero, 0xFFFF0000
+
 		li 	$a0, 20
 		li 	$v0, 32	# pause for 20 milisec
 		syscall	
@@ -88,6 +87,10 @@ moveBall:
 	li	$a1, 0x00000000
 	jal	draw_ball
 	
+	li 	$a0, 20
+	li 	$v0, 32	# pause for 20 milisec
+	syscall	
+		
 	lw	$ra, 0($sp)
 	addi	$sp, $sp, 4
 	
@@ -152,12 +155,12 @@ check_colision:
 	lw	$t4, 0($a0) #y do paddle do player
 	
 	beq	$t1, 0, horizontal
-	beq	$t1, 63, horizontal
+	beq	$t1, 62, horizontal
 	
-	beq	$t0, 9, player_collision
+	beq	$t0, 10, player_collision
 	
 	beq	$t0, 0, vertical
-	beq	$t0, 127, vertical
+	beq	$t0, 126, vertical
 	
 	retorno:
 	jr	$ra
@@ -199,7 +202,6 @@ check_colision:
 check_input:
 	li	$t0, 0xFFFF0000
 	lw	$v0, 0($t0)
-	#beq 	$t1, $zero, check_key
 	jr 	$ra
 
 moveUp:
@@ -242,14 +244,14 @@ start:
 ##=============
 uploadPaddlePosition:#recebe a origem e a cor
 
-li 	$t0, 16
+
 lw 	$t1, 0($a0)
 la	$t2, lines
 
 sll	$t1, $t1, 2
 add	$t1, $t1, $t2
 lw	$t3, 0($t1)
-
+li 	$t0, 16
 addi	$t3, $t3, 0x10010000
 addi	$t3, $t3, 36
 
