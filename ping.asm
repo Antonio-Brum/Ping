@@ -26,14 +26,14 @@ main:
 	jal start
 	
 	jogo:
-		move $a0, $s0
-	
+
 		jal check_input
 		move	$s4, $v0
 		beqz	$s4, no_input
 		
 		lw $s3, 0xFFFF0004
 		
+		move 	$a0, $s0
 		move	$a1, $s1
 		jal	uploadPaddlePosition
 		
@@ -53,7 +53,7 @@ main:
 		jal	check_colision
 		
 
-		li 	$a0, 20
+		li 	$a0, 50
 		li 	$v0, 32	# pause for 20 milisec
 		syscall	
 		sw 	$zero, 0xFFFF0004 #zera o input
@@ -128,8 +128,8 @@ moveBall:
 
 
 draw_ball:
-	move	$t5, $a0
-	move	$t6, $a1
+	move	$t5, $a0 #endereço
+	move	$t6, $a1 #cor
 	li	$t7, 2
 	line1:
  		li 	$t8, 2
