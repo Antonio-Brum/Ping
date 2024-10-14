@@ -12,7 +12,7 @@
 	vel_y:	-1
 	ball_status:	1
 	cpu_move_delay:  .word 0    
-    	cpu_move_limit:  .word 100000  
+    	cpu_move_limit:  .word 10 
 	
 .text
 .globl main
@@ -54,16 +54,16 @@ main:
 		jal	uploadPaddlePosition #atualiza paddle do player
 	
 	#Logica da CPU:
-		move $a0, $s0
-		move $a1, $s1       # cor pra pintar a cpu (aqui apaga)
-    		jal uploadCpuPaddlePosition  # pintar a cpu
+		move 	$a0, $s0
+		move 	$a1, $s1       # cor pra pintar a cpu (aqui apaga)
+    		jal 	uploadCpuPaddlePosition  # pintar a cpu
 		
-		move $a0, $s0
-		jal move_cpu
+		move 	$a0, $s0
+		jal 	move_cpu
 		
-		move $a0, $s0
-		move $a1, $s2      # cor pra pintar a cpu (aqui deesenha_
-    		jal uploadCpuPaddlePosition  # pintar a cpu
+		move 	$a0, $s0
+		move 	$a1, $s2      # cor pra pintar a cpu (aqui deesenha_
+    		jal 	uploadCpuPaddlePosition  # pintar a cpu
 
     		
 		move $a0, $s0
@@ -376,33 +376,35 @@ move_cpu:
     lw    $t3, cpu_move_limit    
     
     blt   $t2, $t3, return_cpu   
+                
+    sw    $zero, cpu_move_delay    
     
-    li    $t2, 0                 
-    sw    $t2, cpu_move_delay    
-    
-    lw    $t0, 4($a0)            
+    lw    $t0, 4($a0)
+    addi	$t0, $t0, 8            
     lw    $t1, ball_y            
 
-   # blt   $t1, $t0, moveUpCPU    
-    #bgt   $t1, $t0, moveDownCPU  
+    blt   $t1, $t0, moveUpCPU    
+    bgt   $t1, $t0, moveDownCPU  
     
     j    return_cpu              
 
 	moveUpCPU:
-	    li    $t2, 0                  
-	    beq   $t0, $t2, return_cpu    
+	    li    $t3, 8                 
+	    beq   $t0, $t3, return_cpu 
 	    addi  $t0, $t0, -2            
 	    sw    $t0, 4($a0)             
 	    j    return_cpu
 
 	moveDownCPU:
-	    li    $t2, 48                 
-	    beq   $t0, $t2, return_cpu    
+	    li    $t3, 56                 
+	    beq   $t0, $t3, return_cpu    
 	    addi  $t0, $t0, 2             
 	    sw    $t0, 4($a0)             
 
 	return_cpu:
-		jr    $ra     
+		addi	$t2, $t2, 1
+		sw	$t2, cpu_move_delay
+		jr   	$ra     
 	    
 	       
 uploadCpuPaddlePosition:   # Recebe a origem e a cor da raquete da CPU
