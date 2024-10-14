@@ -13,13 +13,13 @@
 	ball_status:	1
 	cpu_move_delay:  .word 0    
     	cpu_move_limit:  .word 5
-    	game_start_string: .asciiz "Para Começar o Jogo, pressione 1"
+    	game_start_string: .asciiz "Para Começar o Jogo, pressione 1.\nPara sair pressione 2."
     	game_lose_string: .asciiz "Você perdeu :("
     	game_win_string: .asciiz "Você ganhou :)"
     	player_score_string: .asciiz "Ponto para o jogador: "
     	cpu_score_string: .asciiz "Ponto para a cpu: "
-    	player_score: .word 4
-    	cpu_score: .word 4
+    	player_score: .word 0
+    	cpu_score: .word 0
 	
 .text
 .globl main
@@ -33,15 +33,14 @@ main:
 	
 	la	$s0, origins #s0 recebe o vetor 'origins'
 	
-	addi	$s7, $s7, 5 #delay para limpar o input
+	addi	$s7, $s7, 2 #delay para limpar o input
 	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
 	jal	startBoard
 	
 	
 	
 	jogo:
-	
-		jal check_input
+		jal 	check_input
 		move	$s4, $v0
 		beqz	$s4, no_input
 
@@ -110,7 +109,7 @@ main:
 clean_input:
 	sw 	$zero, 0xFFFF0004 #zera o input
 	sw	$zero, 0xFFFF0000
-	addi	$s7, $s7, 5
+	addi	$s7, $s7, 2
 	j 	jogo
 #falta empilhar os registradores antes de chamar 'draw_ball'
 #e, depois, alterar os registradores usados em 'draw_ball'
@@ -232,6 +231,14 @@ check_colision:
     		la  $a0, player_score_string 
     		syscall
     		
+    		li	$v0, 1
+    		move	$a0, $t6
+    		syscall
+    		
+    		li	$v0, 11
+    		li	$a0, 10
+    		syscall
+    		
     		li 	$t4, 31 #Y da origem da bola
 		li	$t9, 63 #X da origem da bola
 	
@@ -246,6 +253,14 @@ check_colision:
 		
 		li  $v0, 4                
     		la  $a0, cpu_score_string 
+    		syscall
+    		
+    		li	$v0, 1
+    		move	$a0, $t6
+    		syscall
+    		
+    		li	$v0, 11
+    		li	$a0, 10
     		syscall
     		
     		li 	$t4, 31 #Y da origem da bola
@@ -310,17 +325,24 @@ quit:
     	syscall
 
 start:
-	
+	li	$v0, 4
+	la	$a0, game_start_string
+	syscall
 	wait:
 		li	$t0, 0xFFFF0000
 		lw	$t1, 0($t0)
 		beq	$t1, $zero, wait
 	
 	lw	$t2, 0xFFFF0004
+	beq	$t2, 0x00000032, encerra
 	bne	$t2, 0x00000031, start
 	
+
 	jr $ra
 	
+	encerra:
+		li	$v0, 10
+		syscall
 ##=============
 # uploadPaddlePosition
 #
