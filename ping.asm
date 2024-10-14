@@ -20,6 +20,7 @@
 main:
 	la	$s0, origins #s0 recebe o vetor 'origins'
 	
+	addi	$s7, $s7, 5
 	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
 	jal	startBoard
 	
@@ -29,15 +30,17 @@ main:
 	jal start
 	
 	jogo:
-		move $a0, $s0
 	
 		jal check_input
 		move	$s4, $v0
 		beqz	$s4, no_input
 		
+		addi	$s7, $s7, -1
+		beqz	$s7, clean_input
 		lw $s3, 0xFFFF0004
 		
 		move	$a1, $s1
+		move	$a0, $s0
 		jal	uploadPaddlePosition
 		
 		beq	$s3, 0x00000077, moveUp
@@ -45,8 +48,6 @@ main:
 		beq	$s3, 0x00000071, quit
 	
 	no_input:
-		sw 	$zero, 0xFFFF0004 #zera o input
-		sw	$zero, 0xFFFF0000
 		
 		move	$a1, $s2
 		move	$a0, $s0
@@ -70,11 +71,16 @@ main:
 		jal	moveBall
 
 		li 	$v0, 32
-		li 	$a0, 20
+		li 	$a0, 10
 		syscall	
-	
+		
 	j jogo
 
+clean_input:
+	sw 	$zero, 0xFFFF0004 #zera o input
+	sw	$zero, 0xFFFF0000
+	addi	$s7, $s7, 5
+	j 	jogo
 #falta empilhar os registradores antes de chamar 'draw_ball'
 #e, depois, alterar os registradores usados em 'draw_ball'
 moveBall:
@@ -163,13 +169,18 @@ check_colision:
 	lw	$t2, vel_x
 	lw	$t3, vel_y
 	lw	$t4, 0($a0) #y do paddle do player
+	lw	$t5, 4($a0) #y do mot
 	
 	beq	$t1, 0, horizontal
 	beq	$t1, 62, horizontal
 	
+	check_player:
 	beq	$t0, 10, player_collision
-	beq 	$t0, 502, cpu_collision 
 	
+	check_bot:
+	beq 	$t0, 117, cpu_collision 
+	
+	check_vertical:
 	beq	$t0, 0, vertical
 	beq	$t0, 126, vertical
 	
@@ -187,41 +198,40 @@ check_colision:
 		addi	$t3, $t3, 1
 		sw	$t3, vel_y
 		
-		j 	retorno
+		j 	check_player
 
 	player_collision:
-		addi	$t6, $t4, 1 #como a bola tem 2 de altura, ela precisa estar na posição maior que 'paddle + 1'
-		blt	$t1, $t6, retorno #verifica se a bola passou por cima do paddle 
+		addi	$t6, $t4, -1 #como a bola tem 2 de altura, ela precisa estar na posição maior que 'paddle + 1'
+		blt	$t1, $t6, check_bot #verifica se a bola passou por cima do paddle 
 		
 		addi	$t6, $t6, 17 #calcula a parte de baixo do paddle
-		bgt	$t1, $t6, retorno
+		bgt	$t1, $t6, check_bot
 		
 		not	$t2, $t2
 		addi	$t2, $t2, 1
 		sw	$t2, vel_x
 		
-		j 	retorno
+		j 	check_bot
 
-	cpu_collision:
-		lw  $t5, 4($a0)             # Load right paddle y position (origin[1])
+	cpu_collision:	
 
-		addi $t6, $t5, 1            # Paddle's top edge + 1 pixel
-    		blt  $t1, $t6, retorno       # If ball is above paddle, return
+		addi $t7, $t5, -1            # Paddle's top edge + 1 pixel
+    		blt  $t1, $t7, check_vertical       # If ball is above paddle, return
     
-    		addi $t6, $t6, 17           # Paddle's bottom edge (16 height)
-    		bgt  $t1, $t6, retorno       # If ball is below paddle, return
+    		addi $t7, $t7, 17           # Paddle's bottom edge (16 height)
+    		bgt  $t1, $t7, check_vertical       # If ball is below paddle, return
     
     		not $t2, $t2                # Reverse horizontal velocity (ball bounce)
 		addi $t2, $t2, 1
     		sw  $t2, vel_x
     
-    		j   retorno
+    		j   check_vertical
 
 check_input:
-    li  $t0, 0xFFFF0000
-    lw  $v0, 0($t0)
+    	li  $t0, 0xFFFF0000
+   	lw  $v0, 0($t0)
 
-    jr  $ra
+    	jr  $ra
 
 
 moveUp:
@@ -321,7 +331,7 @@ startBoard:
 	
 	# origins [1] contém a origem da raquete direita
 	draw_cpu: 
-		sw $t2, 4($t6)
+		sw $t2, 0($t6)
 		addi $t6, $t6, 512
 		addi $t3, $t3, -1
 		bnez $t3, draw_cpu
@@ -405,7 +415,7 @@ uploadCpuPaddlePosition:   # Recebe a origem e a cor da raquete da CPU
 
 	addi 	$t3, $t3, 0x10010000         # Posição
 	li  	$t0, 16             # Define a altura da raquete (16 pixels)
-	addi 	$t3, $t3, 480     # X da raquete da CPU (linha à direita da tela)
+	addi 	$t3, $t3, 476     # X da raquete da CPU (linha à direita da tela)
 
 	
 	cpu_loop:
