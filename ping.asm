@@ -12,31 +12,39 @@
 	vel_y:	-1
 	ball_status:	1
 	cpu_move_delay:  .word 0    
-    	cpu_move_limit:  .word 10 
+    	cpu_move_limit:  .word 5
+    	game_start_string: .asciiz "Para Começar o Jogo, pressione 1"
+    	game_lose_string: .asciiz "Você perdeu :("
+    	game_win_string: .asciiz "Você ganhou :)"
+    	player_score_string: .asciiz "Ponto para o jogador: "
+    	cpu_score_string: .asciiz "Ponto para a cpu: "
+    	player_score: .word 4
+    	cpu_score: .word 4
 	
 .text
 .globl main
 
 main:
-	la	$s0, origins #s0 recebe o vetor 'origins'
-	
-	addi	$s7, $s7, 5
-	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
-	jal	startBoard
-	
 	li 	$s1, 0x00000000 #cor preta
 	li 	$s2, 0x00d3d3d3 #cor cinza
 	
+	move $a0, $s2
 	jal start
+	
+	la	$s0, origins #s0 recebe o vetor 'origins'
+	
+	addi	$s7, $s7, 5 #delay para limpar o input
+	move	$a0, $s0 #a0 é usado para enviar o vetor como argumento para a função 
+	jal	startBoard
+	
+	
 	
 	jogo:
 	
 		jal check_input
 		move	$s4, $v0
 		beqz	$s4, no_input
-		
-		addi	$s7, $s7, -1
-		beqz	$s7, clean_input
+
 		lw $s3, 0xFFFF0004
 		
 		move	$a1, $s1
@@ -72,9 +80,32 @@ main:
 
 		li 	$v0, 32
 		li 	$a0, 10
-		syscall	
+		syscall
 		
+					
+		addi	$s7, $s7, -1
+		beqz	$s7, clean_input
+		
+		lw $t0, player_score
+		lw $t1, cpu_score
+		
+		beq $t0, 3 ganhou
+		beq $t1, 3 perdeu
+				
 	j jogo
+	
+	ganhou:
+		li  $v0, 4                
+    		la  $a0, game_win_string  
+    		syscall
+    		li $v0, 10
+    		syscall
+    	perdeu:
+    		li $v0, 4  
+    		la $a0, game_lose_string
+    		syscall  
+    		li $v0, 10
+    		syscall
 
 clean_input:
 	sw 	$zero, 0xFFFF0004 #zera o input
@@ -117,7 +148,6 @@ moveBall:
 	#salva a nova posição da bola
 	sw	$t0, ball_x 
 	sw	$t1, ball_y
-	#
 	
 	sll	$t5, $t0, 2 #quantos pixels em x
 	
@@ -125,7 +155,6 @@ moveBall:
 	sll	$t6, $t1, 2
 	add	$t6, $t6, $t4
 	lw	$t7, 0($t6)
-	#
 	
 	add	$t7, $t7, $t5 #soma y com x
 	
@@ -171,8 +200,8 @@ check_colision:
 	lw	$t4, 0($a0) #y do paddle do player
 	lw	$t5, 4($a0) #y do mot
 	
-	beq	$t1, 0, horizontal
-	beq	$t1, 62, horizontal
+	beq	$t1, 0, vertical
+	beq	$t1, 62, vertical
 	
 	check_player:
 	beq	$t0, 10, player_collision
@@ -180,25 +209,51 @@ check_colision:
 	check_bot:
 	beq 	$t0, 117, cpu_collision 
 	
-	check_vertical:
-	beq	$t0, 0, vertical
-	beq	$t0, 126, vertical
+	check_horizontal:
+	beq	$t0, 0, ponto_cpu
+	beq	$t0, 126, ponto_player
 	
 	retorno:
 	jr	$ra
 
 	vertical:
-		not	$t2, $t2
-		addi	$t2, $t2, 1
-		sw	$t2, vel_x
-		
-		j	retorno
-	horizontal:
 		not	$t3, $t3
 		addi	$t3, $t3, 1
 		sw	$t3, vel_y
 		
-		j 	check_player
+		j	check_player
+	
+	ponto_player:
+		lw $t6, player_score
+		addi $t6, $t6 1
+		sw $t6, player_score
+		
+		li  $v0, 4                
+    		la  $a0, player_score_string 
+    		syscall
+    		
+    		li 	$t4, 31 #Y da origem da bola
+		li	$t9, 63 #X da origem da bola
+	
+		sw	$t4, ball_y
+		sw	$t9, ball_x
+		j retorno
+		
+	ponto_cpu:
+		lw $t6, cpu_score
+		addi $t6, $t6 1
+		sw $t6, cpu_score
+		
+		li  $v0, 4                
+    		la  $a0, cpu_score_string 
+    		syscall
+    		
+    		li 	$t4, 31 #Y da origem da bola
+		li	$t9, 63 #X da origem da bola
+	
+		sw	$t4, ball_y
+		sw	$t9, ball_x
+    		j retorno
 
 	player_collision:
 		addi	$t6, $t4, -1 #como a bola tem 2 de altura, ela precisa estar na posição maior que 'paddle + 1'
@@ -216,16 +271,16 @@ check_colision:
 	cpu_collision:	
 
 		addi $t7, $t5, -1            # Paddle's top edge + 1 pixel
-    		blt  $t1, $t7, check_vertical       # If ball is above paddle, return
+    		blt  $t1, $t7, check_horizontal       # If ball is above paddle, return
     
     		addi $t7, $t7, 17           # Paddle's bottom edge (16 height)
-    		bgt  $t1, $t7, check_vertical       # If ball is below paddle, return
+    		bgt  $t1, $t7, check_horizontal       # If ball is below paddle, return
     
     		not $t2, $t2                # Reverse horizontal velocity (ball bounce)
 		addi $t2, $t2, 1
     		sw  $t2, vel_x
     
-    		j   check_vertical
+    		j   check_horizontal
 
 check_input:
     	li  $t0, 0xFFFF0000
@@ -254,8 +309,8 @@ quit:
 	li	$v0, 10
     	syscall
 
-
 start:
+	
 	wait:
 		li	$t0, 0xFFFF0000
 		lw	$t1, 0($t0)
@@ -372,32 +427,30 @@ startBoard:
 	
 	
 move_cpu:
-    lw    $t2, cpu_move_delay    
-    lw    $t3, cpu_move_limit    
+    lw    	$t2, cpu_move_delay    
+    lw    	$t3, cpu_move_limit    
     
-    blt   $t2, $t3, return_cpu   
+    blt	$t2, $t3, return_cpu   
                 
-    sw    $zero, cpu_move_delay    
+    move 	$t2, $zero   
     
-    lw    $t0, 4($a0)
-    addi	$t0, $t0, 8            
-    lw    $t1, ball_y            
+    lw    	$t0, 4($a0)
+    addi	$t4, $t0, 4          
+    lw    	$t1, ball_y            
 
-    blt   $t1, $t0, moveUpCPU    
-    bgt   $t1, $t0, moveDownCPU  
+    blt   $t1, $t4, moveUpCPU    
+    bgt   $t1, $t4, moveDownCPU  
     
     j    return_cpu              
 
 	moveUpCPU:
-	    li    $t3, 8                 
-	    beq   $t0, $t3, return_cpu 
+	    beq   $t0, 0, return_cpu 
 	    addi  $t0, $t0, -2            
 	    sw    $t0, 4($a0)             
 	    j    return_cpu
 
 	moveDownCPU:
-	    li    $t3, 56                 
-	    beq   $t0, $t3, return_cpu    
+	    beq   $t0, 64, return_cpu    
 	    addi  $t0, $t0, 2             
 	    sw    $t0, 4($a0)             
 
